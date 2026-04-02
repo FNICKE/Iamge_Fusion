@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import FusePage   from './pages/FusePage.jsx'
+import SuperResolutionPage from './pages/SuperResolutionPage.jsx'
 import ComparePage from './pages/ComparePage.jsx'
 import AboutPage  from './pages/AboutPage.jsx'
 
 const TABS = [
   { id: 'fuse',    label: 'Fuse Images', icon: '⚗️' },
+  { id: 'sr',      label: 'Super Resolution', icon: '✨' },
   { id: 'compare', label: 'Compare All', icon: '📊' },
   { id: 'about',   label: 'Datasets & Papers', icon: '📚' },
 ]
@@ -59,6 +61,7 @@ export default function App() {
       {/* MAIN CONTENT */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 pb-12">
         {tab === 'fuse'    && <FusePage />}
+        {tab === 'sr'      && <SuperResolutionPage />}
         {tab === 'compare' && <ComparePage />}
         {tab === 'about'   && <AboutPage />}
       </main>

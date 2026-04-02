@@ -9,6 +9,8 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from PIL import Image
 import traceback
+import cv2
+from cv2 import dnn_superres
 
 # Import fusion models
 try:
@@ -214,6 +216,66 @@ def fuse_emma(images):
         )
     pil_result = emma_fuse(images, preserve_color=True)
     return np.array(pil_result, dtype=np.float32) / 255.0
+
+
+# ---------------------------------------------------------------------------
+# Super Resolution (OpenCV)
+# ---------------------------------------------------------------------------
+class SuperResolutionEnhancer:
+    def __init__(self, model_name='edsr', scale=4):
+        self.sr = dnn_superres.DnnSuperResImpl_create()
+        
+        # Paths for models
+        # Searching in root and SuperResolution folder
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        model_paths = [
+            os.path.join(root_dir, "EDSR_x4.pb"),
+            os.path.join(root_dir, "SuperResolution", "EDSR_x4.pb"),
+            os.path.join(root_dir, "LapSRN_x8.pb"),
+            os.path.join(root_dir, "SuperResolution", "LapSRN_x8.pb"),
+        ]
+        
+        selected_path = None
+        if model_name.lower() == 'edsr':
+            for p in model_paths:
+                if "EDSR_x4.pb" in p and os.path.exists(p):
+                    selected_path = p
+                    break
+        elif model_name.lower() == 'lapsrn':
+            for p in model_paths:
+                if "LapSRN_x8.pb" in p and os.path.exists(p):
+                    selected_path = p
+                    break
+                    
+        if selected_path:
+            self.sr.readModel(selected_path)
+            self.sr.setModel(model_name.lower(), scale)
+            self.available = True
+        else:
+            print(f"Super Resolution model {model_name} not found!")
+            self.available = False
+
+    def enhance(self, image_pil):
+        if not self.available:
+            return image_pil
+        
+        img_np = np.array(image_pil.convert("RGB"))
+        # OpenCV uses BGR
+        img_cv = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+        
+        upscaled_cv = self.sr.upsample(img_cv)
+        
+        # Back to RGB
+        upscaled_rgb = cv2.cvtColor(upscaled_cv, cv2.COLOR_BGR2RGB)
+        return Image.fromarray(upscaled_rgb)
+
+# Global instances
+try:
+    SR_EDSR = SuperResolutionEnhancer('edsr', 4)
+    SR_LAPSRN = SuperResolutionEnhancer('lapsrn', 8)
+except Exception as e:
+    print(f"Error initializing SR models: {e}")
+    SR_EDSR = SR_LAPSRN = None
 
 
 FUSION_METHODS = {
@@ -474,6 +536,53 @@ def compare_methods():
 
         return jsonify({"success": True, "results": results})
 
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/super-resolve", methods=["POST"])
+def super_resolve():
+    """Apply Super Resolution to a single image."""
+    try:
+        start = time.time()
+        
+        model_type = request.form.get("model", "edsr") # edsr or lapsrn
+        
+        if "image" not in request.files:
+            return jsonify({"error": "No image uploaded"}), 400
+            
+        f = request.files["image"]
+        img = Image.open(f.stream).convert("RGB")
+        
+        # Decide which model to use
+        if model_type == "lapsrn" and SR_LAPSRN and SR_LAPSRN.available:
+            result_img = SR_LAPSRN.enhance(img)
+            method_used = "LapSRN (8x)"
+        elif SR_EDSR and SR_EDSR.available:
+            result_img = SR_EDSR.enhance(img)
+            method_used = "EDSR (4x)"
+        else:
+            return jsonify({"error": "Super Resolution model not available"}), 500
+            
+        # --- Save result ---
+        result_id = str(uuid.uuid4())[:8]
+        result_filename = f"sr_{result_id}.png"
+        result_path = os.path.join(RESULT_FOLDER, result_filename)
+        result_img.save(result_path)
+        
+        elapsed = round(time.time() - start, 3)
+        
+        return jsonify({
+            "success":      True,
+            "result_id":    result_id,
+            "image_b64":    pil_to_b64(result_img),
+            "method":       method_used,
+            "time_seconds": elapsed,
+            "original_size": {"width": img.width, "height": img.height},
+            "new_size":      {"width": result_img.width, "height": result_img.height},
+        })
+        
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
