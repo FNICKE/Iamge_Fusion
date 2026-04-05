@@ -3,15 +3,15 @@ import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 
 export default function SuperResolutionPage() {
-  const [image, setImage] = useState(null)
+  const [images, setImages] = useState([])
   const [model,  setModel] = useState('edsr')
   const [loading, setLoading] = useState(false)
   const [result,  setResult] = useState(null)
   const [error,   setError]   = useState(null)
 
   const onDrop = useCallback(acceptedFiles => {
-    if (acceptedFiles[0]) {
-      setImage(acceptedFiles[0])
+    if (acceptedFiles.length > 0) {
+      setImages(prev => [...prev, ...acceptedFiles])
       setResult(null)
       setError(null)
     }
@@ -20,16 +20,17 @@ export default function SuperResolutionPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
-    multiple: false
+    multiple: true
   })
 
   const handleProcess = async () => {
-    if (!image) return
+    if (images.length === 0) return
     setLoading(true)
     setError(null)
 
     const formData = new FormData()
-    formData.append('image', image)
+    // Always process the FIRST image from the list
+    formData.append('image', images[0])
     formData.append('model', model)
 
     try {
@@ -67,35 +68,61 @@ export default function SuperResolutionPage() {
         {/* INPUT PANEL */}
         <div className="glass-panel p-8 space-y-8 h-fit">
           <div>
-            <h3 className="text-xl font-bold text-white mb-6">1. Upload Low-Res Image</h3>
+            <h3 className="text-xl font-bold text-white mb-6">1. Upload Low-Res Images</h3>
             <div 
               {...getRootProps()} 
-              className={`relative aspect-video rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden flex flex-col items-center justify-center p-6 ${
+              className={`relative min-h-[200px] rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden flex flex-col items-center justify-center p-6 ${
                 isDragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-white/20 bg-white/5'
               }`}
             >
               <input {...getInputProps()} />
-              {image ? (
-                <>
-                  <img 
-                    src={URL.createObjectURL(image)} 
-                    alt="Source" 
-                    className="absolute inset-0 w-full h-full object-contain p-2" 
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="bg-indigo-600 px-4 py-2 rounded-lg font-medium text-white shadow-lg">Change Image</span>
+              {images.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 w-full">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group/img">
+                      <img 
+                        src={URL.createObjectURL(img)} 
+                        alt={`Input ${idx}`} 
+                        className="w-full h-full object-cover" 
+                      />
+                      {idx === 0 && (
+                        <div className="absolute top-2 left-2 bg-indigo-600 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full text-white shadow-lg">
+                          Processing
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setImages(prev => prev.filter((_, i) => i !== idx))
+                          }}
+                          className="bg-red-500/80 hover:bg-red-500 p-2 rounded-lg text-white"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="aspect-square rounded-xl border border-dashed border-white/20 flex flex-col items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+                    <span className="text-2xl">+</span>
+                    <span className="text-[10px]">Add More</span>
                   </div>
-                </>
+                </div>
               ) : (
                 <div className="text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-3xl">🖼️</div>
                   <div className="space-y-1">
-                    <p className="text-white font-medium">Drop your image here</p>
+                    <p className="text-white font-medium">Drop your images here</p>
                     <p className="text-slate-400 text-sm">PNG, JPEG, WEBP or JPG</p>
                   </div>
                 </div>
               )}
             </div>
+            {images.length > 0 && (
+              <p className="mt-3 text-xs text-slate-500 italic">
+                * Note: Only the <strong>first image</strong> in the list will be processed.
+              </p>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -123,9 +150,9 @@ export default function SuperResolutionPage() {
 
           <button
             onClick={handleProcess}
-            disabled={!image || loading}
+            disabled={images.length === 0 || loading}
             className={`w-full py-4 rounded-xl font-bold text-white transition-all duration-300 flex items-center justify-center gap-3 ${
-              !image || loading
+              images.length === 0 || loading
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
                 : 'bg-indigo-600 hover:bg-indigo-500 shadow-[0_10px_25px_rgba(79,70,229,0.4)] hover:shadow-[0_12px_30px_rgba(79,70,229,0.5)] transform hover:-translate-y-0.5'
             }`}

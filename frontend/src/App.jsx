@@ -3,12 +3,14 @@ import FusePage   from './pages/FusePage.jsx'
 import SuperResolutionPage from './pages/SuperResolutionPage.jsx'
 import ComparePage from './pages/ComparePage.jsx'
 import AboutPage  from './pages/AboutPage.jsx'
+import ImageQualityPage from './pages/ImageQualityPage.jsx'
 
 const TABS = [
-  { id: 'fuse',    label: 'Fuse Images', icon: '⚗️' },
-  { id: 'sr',      label: 'Super Resolution', icon: '✨' },
-  { id: 'compare', label: 'Compare All', icon: '📊' },
-  { id: 'about',   label: 'Datasets & Papers', icon: '📚' },
+  { id: 'fuse',    label: 'Fuse Images',       icon: '⚗️' },
+  { id: 'sr',      label: 'Super Resolution',  icon: '✨' },
+  { id: 'compare', label: 'Compare All',        icon: '📊' },
+  { id: 'quality', label: 'Quality Analysis',   icon: '🔬' },
+  { id: 'about',   label: 'Datasets & Papers',  icon: '📚' },
 ]
 
 export default function App() {
@@ -63,6 +65,7 @@ export default function App() {
         {tab === 'fuse'    && <FusePage />}
         {tab === 'sr'      && <SuperResolutionPage />}
         {tab === 'compare' && <ComparePage />}
+        {tab === 'quality' && <ImageQualityPage />}
         {tab === 'about'   && <AboutPage />}
       </main>
 

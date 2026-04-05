@@ -255,6 +255,55 @@ export default function ComparePage() {
               </table>
             </div>
           </div>
+
+          {/* Quantitative Metrics Table (By Image) */}
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl p-6 mt-6">
+            <div className="flex items-center gap-3 mb-6 text-lg font-bold">
+              <span className="p-2 rounded bg-white/10">📊</span>
+              Quantitative Metrics (By Image)
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left py-3 px-4 text-slate-400 font-semibold" rowSpan="2">Algorithm</th>
+                    {images.map((_, i) => (
+                      <th key={i} className="text-center py-2 px-4 text-slate-300 font-bold border-l border-white/10 bg-white/5" colSpan="2">
+                        Image {i + 1}
+                      </th>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-white/10">
+                    {images.flatMap((_, i) => [
+                      <th key={`ssim-${i}`} className="text-center py-2 px-4 text-slate-400 font-semibold border-l border-white/10 bg-white/[0.02]">SSIM</th>,
+                      <th key={`mi-${i}`} className="text-center py-2 px-4 text-slate-400 font-semibold bg-white/[0.02]">MI</th>
+                    ])}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(results).map(([id, r]) => (
+                    <tr
+                      key={id}
+                      className={`border-b border-white/5 transition-colors
+                        ${best === id ? 'bg-emerald-500/10 text-emerald-300' : 'text-slate-300 hover:bg-white/5'}`}
+                    >
+                      <td className="py-3 px-4 font-medium">
+                        {METHOD_LABELS[id]?.icon} {METHOD_LABELS[id]?.name}
+                      </td>
+                      {images.flatMap((_, i) => [
+                         <td key={`ssim-val-${i}`} className="py-3 px-4 text-center font-mono border-l border-white/10">
+                          {r.metrics.ssim_per_source?.[i] != null ? r.metrics.ssim_per_source[i].toFixed(4) : '—'}
+                        </td>,
+                        <td key={`mi-val-${i}`} className="py-3 px-4 text-center font-mono">
+                          {r.metrics.mi_per_source?.[i] != null ? r.metrics.mi_per_source[i].toFixed(4) : '—'}
+                        </td>
+                      ])}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
     </div>

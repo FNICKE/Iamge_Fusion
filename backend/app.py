@@ -269,13 +269,26 @@ class SuperResolutionEnhancer:
         upscaled_rgb = cv2.cvtColor(upscaled_cv, cv2.COLOR_BGR2RGB)
         return Image.fromarray(upscaled_rgb)
 
-# Global instances
-try:
-    SR_EDSR = SuperResolutionEnhancer('edsr', 4)
-    SR_LAPSRN = SuperResolutionEnhancer('lapsrn', 8)
-except Exception as e:
-    print(f"Error initializing SR models: {e}")
-    SR_EDSR = SR_LAPSRN = None
+# Global instances (lazy loading)
+SR_EDSR = None
+SR_LAPSRN = None
+
+def get_sr_model(model_name):
+    global SR_EDSR, SR_LAPSRN
+    try:
+        if model_name.lower() == 'edsr':
+            if SR_EDSR is None:
+                print("Loading EDSR model (Lazy)...")
+                SR_EDSR = SuperResolutionEnhancer('edsr', 4)
+            return SR_EDSR
+        elif model_name.lower() == 'lapsrn':
+            if SR_LAPSRN is None:
+                print("Loading LapSRN model (Lazy)...")
+                SR_LAPSRN = SuperResolutionEnhancer('lapsrn', 8)
+            return SR_LAPSRN
+    except Exception as e:
+        print(f"Error initializing {model_name} model: {e}")
+    return None
 
 
 FUSION_METHODS = {
@@ -508,7 +521,7 @@ def compare_methods():
         min_w = min(i.width  for i in images)
         min_h = min(i.height for i in images)
         
-        max_px = 1024
+        max_px = 512
         if max(min_w, min_h) > max_px:
             scale = max_px / max(min_w, min_h)
             min_w = int(min_w * scale)
@@ -520,11 +533,14 @@ def compare_methods():
         
         images = [i.resize((min_w, min_h), Image.LANCZOS) for i in images]
 
+        fast_methods = ["average", "max", "gradient_weighted", "laplacian_pyramid"]
         results = {}
-        for name, fn in FUSION_METHODS.items():
-            t0 = time.time()
-            arr = fn(images)
-            elapsed = round(time.time() - t0, 3)
+        for name in fast_methods:
+            if name in FUSION_METHODS:
+                fn = FUSION_METHODS[name]
+                t0 = time.time()
+                arr = fn(images)
+                elapsed = round(time.time() - t0, 3)
             uint8 = (arr * 255).clip(0, 255).astype(np.uint8)
             img_out = Image.fromarray(uint8)
             metrics = compute_metrics(arr, images)
@@ -554,14 +570,22 @@ def super_resolve():
             
         f = request.files["image"]
         img = Image.open(f.stream).convert("RGB")
+
+        # --- IMPORTANT: Prevent OutOfMemory / Paging errors ---
+        # OpenCV's DNN enhancer will crash requesting >3GB RAM for large images. 
+        # We must limit the input dimensions.
+        max_sr_px = 500
+        if max(img.width, img.height) > max_sr_px:
+            scale = max_sr_px / max(img.width, img.height)
+            new_w = int(img.width * scale)
+            new_h = int(img.height * scale)
+            img = img.resize((new_w, new_h), Image.LANCZOS)
         
         # Decide which model to use
-        if model_type == "lapsrn" and SR_LAPSRN and SR_LAPSRN.available:
-            result_img = SR_LAPSRN.enhance(img)
-            method_used = "LapSRN (8x)"
-        elif SR_EDSR and SR_EDSR.available:
-            result_img = SR_EDSR.enhance(img)
-            method_used = "EDSR (4x)"
+        sr_model = get_sr_model(model_type)
+        if sr_model and sr_model.available:
+            result_img = sr_model.enhance(img)
+            method_used = "LapSRN (8x)" if model_type == "lapsrn" else "EDSR (4x)"
         else:
             return jsonify({"error": "Super Resolution model not available"}), 500
             
@@ -583,6 +607,105 @@ def super_resolve():
             "new_size":      {"width": result_img.width, "height": result_img.height},
         })
         
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/image-quality", methods=["POST"])
+def image_quality():
+    """
+    Compare an original image with an enhanced image and return
+    quality metrics: SSIM, PSNR, MSE, Entropy, Mutual Information.
+    """
+    try:
+        if "original" not in request.files or "enhanced" not in request.files:
+            return jsonify({"error": "Upload both 'original' and 'enhanced' images."}), 400
+
+        orig_pil = Image.open(request.files["original"].stream).convert("RGB")
+        enh_pil  = Image.open(request.files["enhanced"].stream).convert("RGB")
+
+        # Resize enhanced to match original dimensions for pixel-wise comparison
+        if enh_pil.size != orig_pil.size:
+            enh_pil = enh_pil.resize(orig_pil.size, Image.LANCZOS)
+
+        orig_arr = np.array(orig_pil, dtype=np.float32) / 255.0
+        enh_arr  = np.array(enh_pil,  dtype=np.float32) / 255.0
+
+        orig_g = to_gray(orig_arr)
+        enh_g  = to_gray(enh_arr)
+
+        # ── helpers ─────────────────────────────────────────────────────────
+        def _entropy(g):
+            hist, _ = np.histogram(g.flatten(), bins=256, range=(0, 1))
+            hist = hist / (hist.sum() + 1e-8)
+            return float(-np.sum(hist * np.log2(hist + 1e-8)))
+
+        def _ssim(a, b):
+            c1, c2 = 0.01**2, 0.03**2
+            mu_a, mu_b = a.mean(), b.mean()
+            sig_ab = ((a - mu_a) * (b - mu_b)).mean()
+            num = (2*mu_a*mu_b + c1) * (2*sig_ab + c2)
+            den = (mu_a**2 + mu_b**2 + c1) * (a.var() + b.var() + c2)
+            return float(num / (den + 1e-8))
+
+        def _psnr(a, b, max_val=1.0):
+            mse_val = float(np.mean((a - b) ** 2))
+            if mse_val < 1e-10:
+                return 100.0
+            return float(10 * np.log10(max_val**2 / mse_val))
+
+        def _mse(a, b):
+            return float(np.mean((a - b) ** 2))
+
+        def _mi(a, b, bins=64):
+            hist2d, _, _ = np.histogram2d(a.flatten(), b.flatten(), bins=bins, range=[[0,1],[0,1]])
+            pxy = hist2d / (hist2d.sum() + 1e-8)
+            px  = pxy.sum(axis=1, keepdims=True) + 1e-8
+            py  = pxy.sum(axis=0, keepdims=True) + 1e-8
+            return float(np.sum(pxy * np.log2(pxy / (px * py) + 1e-8)))
+
+        # ── compute metrics ─────────────────────────────────────────────────
+        metrics = {
+            "ssim":    round(_ssim(orig_g, enh_g),  4),
+            "psnr":    round(_psnr(orig_g, enh_g),  4),
+            "mse":     round(_mse(orig_g,  enh_g) * 10000, 4),   # ×10k for readability
+            "entropy": round(_entropy(enh_g),        4),
+            "mi":      round(_mi(orig_g,  enh_g),   4),
+        }
+
+        # original self-metrics (entropy of original, etc.)
+        original_metrics = {
+            "ssim":    1.0,
+            "psnr":    100.0,
+            "mse":     0.0,
+            "entropy": round(_entropy(orig_g), 4),
+            "mi":      round(_mi(orig_g, orig_g), 4),
+        }
+
+        # ── verdict ──────────────────────────────────────────────────────────
+        improved_flags = [
+            metrics["ssim"]    > 0.90,
+            metrics["psnr"]    > 25.0,
+            metrics["mse"]     < 50.0,
+            metrics["entropy"] >= original_metrics["entropy"],
+        ]
+        score = sum(improved_flags)
+        if score >= 3:
+            verdict = {"improved": True,  "label": "Enhancement looks great!", "detail": f"{score}/4 quality checks passed."}
+        elif score >= 2:
+            verdict = {"improved": True,  "label": "Moderate improvement",      "detail": f"{score}/4 quality checks passed."}
+        else:
+            verdict = {"improved": False, "label": "Quality may have degraded", "detail": f"Only {score}/4 checks passed. Review results carefully."}
+
+        return jsonify({
+            "success":          True,
+            "metrics":          metrics,
+            "original_metrics": original_metrics,
+            "verdict":          verdict,
+            "image_size":       {"width": orig_pil.width, "height": orig_pil.height},
+        })
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
