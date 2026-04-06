@@ -5,11 +5,8 @@ const METHOD_LABELS = {
   max:               { name: 'Max Fusion',         icon: '⬆️', color: 'from-emerald-500 to-emerald-700' },
   gradient_weighted: { name: 'Gradient-Weighted',  icon: '∇',  color: 'from-amber-500 to-amber-700' },
   laplacian_pyramid: { name: 'Laplacian Pyramid',  icon: '🔺', color: 'from-purple-500 to-purple-700' },
-  multi_focus_clear: { name: 'Blur+Clear → Clean', icon: '✨', color: 'from-teal-500 to-teal-700' },
-  ir_vis_clean: { name: 'IR+Visible → Clean', icon: '🌙', color: 'from-amber-500 to-amber-700' },
-  deep_learning:     { name: 'Deep Fusion',        icon: '🧠', color: 'from-indigo-500 to-indigo-700' },
-  ir_vis_color:      { name: 'IR+VIS Color',       icon: '🌈', color: 'from-pink-500 to-pink-700' },
   emma:              { name: 'EMMA (CVPR 2024)',   icon: '🔬', color: 'from-cyan-500 to-cyan-700' },
+  deepfuse:          { name: 'DeepFuse (AI + SR)', icon: '🚀', color: 'from-indigo-500 to-indigo-700' },
 }
 
 export default function ComparePage() {
@@ -148,8 +145,8 @@ export default function ComparePage() {
       {loading && (
         <div className="flex flex-col items-center justify-center gap-4 py-16 text-slate-400">
           <div className="w-14 h-14 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-lg font-medium">Running all 4 fusion algorithms…</p>
-          <p className="text-sm text-slate-500">This compares Average, Max, Gradient-Weighted & Laplacian</p>
+          <p className="text-lg font-medium">Running all 6 fusion algorithms…</p>
+          <p className="text-sm text-slate-500">Comparing Base Models, EMMA (CVPR 2024) and DeepFuse Super-Resolution</p>
         </div>
       )}
 
@@ -170,7 +167,7 @@ export default function ComparePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Object.entries(results).map(([id, r], idx) => (
               <div
                 key={id}

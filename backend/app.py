@@ -218,6 +218,25 @@ def fuse_emma(images):
     return np.array(pil_result, dtype=np.float32) / 255.0
 
 
+def fuse_deepfuse(images):
+    """
+    DeepFuse: Combines Advanced Saliency Fusion with EDSR Super-Resolution.
+    Fuses multiple images and then upscales the result for maximum clarity.
+    """
+    if not DEEP_LEARNING_AVAILABLE:
+        raise RuntimeError("Deep learning model not available.")
+    
+    # 1. High quality fusion
+    fused_pil = deep_fuse(images)
+    
+    # 2. Super resolution upscale (EDSR x4)
+    sr = get_sr_model('edsr')
+    if sr and sr.available:
+        fused_pil = sr.enhance(fused_pil)
+        
+    return np.array(fused_pil, dtype=np.float32) / 255.0
+
+
 # ---------------------------------------------------------------------------
 # Super Resolution (OpenCV)
 # ---------------------------------------------------------------------------
@@ -300,6 +319,7 @@ FUSION_METHODS = {
     "ir_vis_clean":         fuse_ir_vis_clean,
     "deep_learning":        fuse_deep_learning,
     "ir_vis_color":         fuse_ir_vis_color,
+    "deepfuse":             fuse_deepfuse,
 }
 if EMMA_AVAILABLE:
     FUSION_METHODS["emma"] = fuse_emma
@@ -533,13 +553,17 @@ def compare_methods():
         
         images = [i.resize((min_w, min_h), Image.LANCZOS) for i in images]
 
-        fast_methods = ["average", "max", "gradient_weighted", "laplacian_pyramid"]
+        active_methods = ["average", "max", "gradient_weighted", "laplacian_pyramid", "emma", "deepfuse"]
         results = {}
-        for name in fast_methods:
+        for name in active_methods:
             if name in FUSION_METHODS:
                 fn = FUSION_METHODS[name]
                 t0 = time.time()
-                arr = fn(images)
+                try:
+                    arr = fn(images)
+                except Exception as e:
+                    print(f"Error running {name}: {e}")
+                    continue
                 elapsed = round(time.time() - t0, 3)
             uint8 = (arr * 255).clip(0, 255).astype(np.uint8)
             img_out = Image.fromarray(uint8)
