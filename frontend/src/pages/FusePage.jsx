@@ -2,26 +2,26 @@ import { useState, useCallback, useRef } from 'react'
 import MetricsPanel from '../components/MetricsPanel.jsx'
 
 const METHOD_INFO = {
-  average: { 
-    name: 'Average Fusion', icon: '⚖️', speed: 'Fast', quality: 'Basic',
-    desc: 'Pixel-wise averaging across all source images. Fast and simple baseline.',
-    border: 'hover:border-blue-500', bg: 'hover:bg-blue-500/10', glow: 'shadow-blue-500/30'
-  },
-  max: { 
-    name: 'Max Fusion', icon: '⬆️', speed: 'Fast', quality: 'Good',
-    desc: 'Preserves maximum intensity at each pixel. Great for bright features.',
-    border: 'hover:border-emerald-500', bg: 'hover:bg-emerald-500/10', glow: 'shadow-emerald-500/30'
-  },
-  gradient_weighted: { 
-    name: 'Gradient-Weighted', icon: '∇', speed: 'Medium', quality: 'Great',
-    desc: 'Weights pixels by local gradient magnitude, preserving fine details.',
-    border: 'hover:border-amber-500', bg: 'hover:bg-amber-500/10', glow: 'shadow-amber-500/30'
-  },
-  laplacian_pyramid: { 
-    name: 'Laplacian Pyramid', icon: '🔺', speed: 'Slow', quality: 'Excellent',
-    desc: 'Multi-scale pyramid fusion — classic approach combining frequency bands.',
-    border: 'hover:border-purple-500', bg: 'hover:bg-purple-500/10', glow: 'shadow-purple-500/30'
-  },
+  // average: { 
+  //   name: 'Average Fusion', icon: '⚖️', speed: 'Fast', quality: 'Basic',
+  //   desc: 'Pixel-wise averaging across all source images. Fast and simple baseline.',
+  //   border: 'hover:border-blue-500', bg: 'hover:bg-blue-500/10', glow: 'shadow-blue-500/30'
+  // },
+  // max: { 
+  //   name: 'Max Fusion', icon: '⬆️', speed: 'Fast', quality: 'Good',
+  //   desc: 'Preserves maximum intensity at each pixel. Great for bright features.',
+  //   border: 'hover:border-emerald-500', bg: 'hover:bg-emerald-500/10', glow: 'shadow-emerald-500/30'
+  // },
+  // gradient_weighted: { 
+  //   name: 'Gradient-Weighted', icon: '∇', speed: 'Medium', quality: 'Great',
+  //   desc: 'Weights pixels by local gradient magnitude, preserving fine details.',
+  //   border: 'hover:border-amber-500', bg: 'hover:bg-amber-500/10', glow: 'shadow-amber-500/30'
+  // },
+  // laplacian_pyramid: { 
+  //   name: 'Laplacian Pyramid', icon: '🔺', speed: 'Slow', quality: 'Excellent',
+  //   desc: 'Multi-scale pyramid fusion — classic approach combining frequency bands.',
+  //   border: 'hover:border-purple-500', bg: 'hover:bg-purple-500/10', glow: 'shadow-purple-500/30'
+  // },
   emma: { 
     name: 'EMMA (CVPR 2024)', icon: '🔬', speed: 'Medium', quality: 'State-of-the-Art',
     desc: 'Pretrained equivariant fusion. Clean, crystal-clear output for IR+Visible pairs.',
@@ -31,7 +31,10 @@ const METHOD_INFO = {
     name: 'DeepFuse AI', icon: '✨', speed: 'Slow', quality: 'Ultra-HD',
     desc: 'Advanced saliency-based deep fusion combined with EDSR Super-Resolution enhancement.',
     border: 'hover:border-indigo-400', bg: 'hover:bg-indigo-500/10', glow: 'shadow-indigo-500/40'
-  }
+  },
+  swin_fusion: {  name: 'Swin Fusion (Transformer)', icon: '🧩', speed: 'Medium', quality: 'State-of-the-Art',
+  desc: 'Transformer-based fusion. Clean, crystal-clear output for multi-modal image pairs.',border: 'hover:border-pink-500', bg: 'hover:bg-pink-500/10',  glow: 'shadow-pink-500/40'
+}
 }
 
 // These models are currently hidden to keep the interface focused

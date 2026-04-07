@@ -7,7 +7,7 @@ import ImageQualityPage from './pages/ImageQualityPage.jsx'
 
 const TABS = [
   { id: 'fuse',    label: 'Fuse Images',       icon: '⚗️' },
-  { id: 'sr',      label: 'Super Resolution',  icon: '✨' },
+  // { id: 'sr',      label: 'Super Resolution',  icon: '✨' },
   { id: 'compare', label: 'Compare All',        icon: '📊' },
   { id: 'quality', label: 'Quality Analysis',   icon: '🔬' },
   { id: 'about',   label: 'Datasets & Papers',  icon: '📚' },
