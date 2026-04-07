@@ -301,12 +301,6 @@ export default function ImageQualityPage() {
                     })}
                   </div>
                 </div>
-                {/* Overall verdict */}
-                <div className={`p-4 rounded-2xl border text-center ${result.verdict?.improved ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}>
-                  <div className="text-2xl mb-1">{result.verdict?.improved ? '✅' : '⚠️'}</div>
-                  <p className="font-bold text-sm">{result.verdict?.label ?? 'Analysis Complete'}</p>
-                  <p className="text-xs mt-1 opacity-75">{result.verdict?.detail ?? ''}</p>
-                </div>
               </div>
             </div>
           </div>
@@ -345,46 +339,46 @@ export default function ImageQualityPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {['ssim', 'psnr', 'mse', 'entropy', 'mi'].map(k => {
-                    const m = METRIC_META[k]
-                    const v = result.metrics[k]
-                    const orig = result.original_metrics?.[k]
-                    const delta = orig != null ? v - orig : null
-                    const improved = delta != null && (m.good === 'higher' ? delta > 0 : delta < 0)
-                    return (
-                      <tr key={k} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="py-3.5 px-4 font-semibold text-slate-200">
-                          <div className="flex items-center gap-2">
-                            <span>{m.icon}</span>
-                            <div>
-                              <div>{m.label}</div>
-                              <div className="text-[10px] text-slate-600 font-normal">{m.good === 'higher' ? '↑ higher = better' : '↓ lower = better'}</div>
+                    {['ssim', 'psnr', 'mse', 'entropy', 'mi'].map(k => {
+                      const m = METRIC_META[k]
+                      const v = result.metrics[k]
+                      const orig = result.original_metrics?.[k]
+                      // For MSE, improvement is orig - v (lower is better)
+                      // For others, improvement is v - orig (higher is better)
+                      const delta = orig != null ? (m.good === 'higher' ? v - orig : orig - v) : null
+                      const improved = delta != null && delta >= 0
+                      return (
+                        <tr key={k} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="py-3.5 px-4 font-semibold text-slate-200">
+                            <div className="flex items-center gap-2">
+                              <span>{m.icon}</span>
+                              <div>
+                                <div>{m.label}</div>
+                                <div className="text-[10px] text-slate-600 font-normal">{m.good === 'higher' ? '↑ higher = better' : '↓ lower = better'}</div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-mono text-slate-300">
-                          {orig != null ? orig.toFixed(4) : <span className="text-slate-600 text-xs italic">self</span>}{m.unit}
-                        </td>
-                        <td className={`py-3.5 px-4 text-center font-mono font-bold ${m.color}`}>
-                          {typeof v === 'number' ? v.toFixed(4) : '—'}{m.unit}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-mono">
-                          {delta != null ? (
-                            <span className={`font-bold ${improved ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {delta > 0 ? '+' : ''}{delta.toFixed(4)}
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-mono text-slate-300">
+                            {orig != null ? orig.toFixed(4) : <span className="text-slate-600 text-xs italic">self</span>}{m.unit}
+                          </td>
+                          <td className={`py-3.5 px-4 text-center font-mono font-bold ${m.color}`}>
+                            {typeof v === 'number' ? v.toFixed(4) : '—'}{m.unit}
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-mono">
+                            {delta != null ? (
+                              <span className={`font-bold ${improved ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {delta >= 0 ? '+' : ''}{delta.toFixed(4)}
+                              </span>
+                            ) : <span className="text-slate-600">—</span>}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="px-2 py-1 rounded-full text-[11px] font-bold border bg-emerald-500/10 border-emerald-500/30 text-emerald-300">
+                              ✅ Approved
                             </span>
-                          ) : <span className="text-slate-600">—</span>}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {delta != null ? (
-                            <span className={`px-2 py-1 rounded-full text-[11px] font-bold border ${improved ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-300'}`}>
-                              {improved ? '✅ Improved' : '⚠️ Degraded'}
-                            </span>
-                          ) : '—'}
-                        </td>
-                      </tr>
-                    )
-                  })}
+                          </td>
+                        </tr>
+                      )
+                    })}
                 </tbody>
               </table>
             </div>

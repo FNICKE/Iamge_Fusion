@@ -32,9 +32,16 @@ const METHOD_INFO = {
     desc: 'Advanced saliency-based deep fusion combined with EDSR Super-Resolution enhancement.',
     border: 'hover:border-indigo-400', bg: 'hover:bg-indigo-500/10', glow: 'shadow-indigo-500/40'
   },
-  swin_fusion: {  name: 'Swin Fusion (Transformer)', icon: '🧩', speed: 'Medium', quality: 'State-of-the-Art',
-  desc: 'Transformer-based fusion. Clean, crystal-clear output for multi-modal image pairs.',border: 'hover:border-pink-500', bg: 'hover:bg-pink-500/10',  glow: 'shadow-pink-500/40'
-}
+  swin_fusion: {  
+    name: 'Swin Fusion (Transformer)', icon: '🧩', speed: 'Medium', quality: 'State-of-the-Art',
+    desc: 'Transformer-based fusion. Clean, crystal-clear output for multi-modal image pairs.',
+    border: 'hover:border-pink-500', bg: 'hover:bg-pink-500/10',  glow: 'shadow-pink-500/40'
+  },
+  ir_vis_color: { 
+    name: 'Infrared+Visible Fusion', icon: '🌈', speed: 'Medium', quality: 'Exceptional',
+    desc: 'Dual-scale HSV fusion. Perfectly preserves visible colors while injecting sharp glowing infrared thermal details.',
+    border: 'hover:border-orange-500', bg: 'hover:bg-orange-500/10', glow: 'shadow-orange-500/40'
+  }
 }
 
 // These models are currently hidden to keep the interface focused
@@ -54,11 +61,11 @@ const HIDDEN_MODELS = {
     desc: 'Advanced per-pixel saliency, Laplacian Pyramid, and unsharp masking for crystal clear output.',
     border: 'hover:border-indigo-400', bg: 'hover:bg-indigo-500/10', glow: 'shadow-indigo-500/40'
   },
-  ir_vis_color: { 
-    name: 'IR+VIS Color Fusion', icon: '🌈', speed: 'Medium', quality: 'Exceptional',
-    desc: 'Dual-scale HSV fusion. Preserves vibrant visible colors while injecting bright thermal details.',
-    border: 'hover:border-pink-500', bg: 'hover:bg-pink-500/10', glow: 'shadow-pink-500/40'
-  },
+  // ir_vis_color: { 
+  //   name: 'IR+VIS Color Fusion', icon: '🌈', speed: 'Medium', quality: 'Exceptional',
+  //   desc: 'Dual-scale HSV fusion. Preserves vibrant visible colors while injecting bright thermal details.',
+  //   border: 'hover:border-pink-500', bg: 'hover:bg-pink-500/10', glow: 'shadow-pink-500/40'
+  // },
 };
 
 export default function FusePage() {
