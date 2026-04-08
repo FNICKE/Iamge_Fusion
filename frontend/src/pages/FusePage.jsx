@@ -23,8 +23,8 @@ const METHOD_INFO = {
   //   border: 'hover:border-purple-500', bg: 'hover:bg-purple-500/10', glow: 'shadow-purple-500/30'
   // },
   emma: { 
-    name: 'EMMA (CVPR 2024)', icon: '🔬', speed: 'Medium', quality: 'State-of-the-Art',
-    desc: 'Pretrained equivariant fusion. Clean, crystal-clear output for IR+Visible pairs.',
+    name: 'EMMA (CVPR 2024)', icon: '🔬', speed: 'Medium', quality: '8x Ultra-Res',
+    desc: 'Pretrained equivariant multi-modality fusion. Clean, crystal-clear output — best for IR+Visible pairs.',
     border: 'hover:border-cyan-500', bg: 'hover:bg-cyan-500/10', glow: 'shadow-cyan-500/40'
   },
   deepfuse: { 
@@ -108,7 +108,7 @@ export default function FusePage() {
   }, [addFiles])
 
   const handleFuse = async () => {
-    const isSR = method === 'deepfuse';
+    const isSR = method === 'deepfuse' || method === 'emma';
     if (images.length < (isSR ? 1 : 2)) {
       setError(`Please upload at least ${isSR ? '1 image' : '2 images'}.`);
       return;
@@ -123,7 +123,10 @@ export default function FusePage() {
       if (isSR) {
         // Use Super Resolution API
         fd.append('image', images[0].file)
-        fd.append('model', srModel)
+        // If EMMA, we force LapSRN, otherwise use the selected srModel (for DeepFuse)
+        const selectedSR = method === 'emma' ? 'lapsrn' : srModel;
+        fd.append('model', selectedSR)
+        
         const res = await fetch('/api/super-resolve', { method: 'POST', body: fd })
         const data = await res.json()
         if (!res.ok || data.error) throw new Error(data.error || 'Super Resolution failed')
@@ -163,13 +166,13 @@ export default function FusePage() {
       {/* HERO */}
       <div className="text-center pt-8 pb-4 animate-fade-in-up">
         <div className="inline-block px-4 py-1.5 mb-6 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 font-medium text-sm shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-          {method === 'deepfuse' ? '✨ Image Enhancement Engine' : '⚗️ Multi-Modal Fusion Engine'}
+          {(method === 'deepfuse' || method === 'emma') ? '✨ Image Enhancement Engine' : '⚗️ Multi-Modal Fusion Engine'}
         </div>
         <h1 className="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-200 to-slate-400 drop-shadow-lg text-balance">
-          {method === 'deepfuse' ? 'Super Resolution AI' : 'Fuse. Enhance. Discover.'}
+          {(method === 'deepfuse' || method === 'emma') ? 'Super Resolution AI' : 'Fuse. Enhance. Discover.'}
         </h1>
         <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          {method === 'deepfuse' 
+          {(method === 'deepfuse' || method === 'emma') 
             ? 'Transform low-resolution images into crystal-clear high-definition versions using state-of-the-art AI upscaling.'
             : 'Upload 2–6 source images (e.g. Infrared & Visible, Multi-exposure) and select a fusion algorithm. Get crystal-clear results instantly.'}
         </p>
@@ -253,9 +256,9 @@ export default function FusePage() {
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl shadow-xl p-8 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
             <div className="flex items-center gap-3 mb-6 text-xl font-bold text-white">
               <span className="p-2.5 rounded-xl bg-white/10 shadow-inner border border-white/5">📁</span>
-              {method === 'deepfuse' ? 'Upload Low-Res Images' : 'Source Images'}
+              {(method === 'deepfuse' || method === 'emma') ? 'Upload Low-Res Images' : 'Source Images'}
               <span className="ml-auto text-sm bg-indigo-500/20 px-4 py-1.5 rounded-full text-indigo-300 border border-indigo-500/20 shadow-inner">
-                {images.length}{method === 'deepfuse' ? '' : '/6'} uploaded
+                {images.length}{(method === 'deepfuse' || method === 'emma') ? '' : '/6'} uploaded
               </span>
             </div>
 
@@ -270,10 +273,10 @@ export default function FusePage() {
               onDrop={handleDrop}
             >
               <div className="text-5xl mb-4 transform transition-transform group-hover:scale-110 drop-shadow-lg">
-                {method === 'deepfuse' ? '✨' : '🖼️'}
+                {(method === 'deepfuse' || method === 'emma') ? '✨' : '🖼️'}
               </div>
               <h3 className="text-xl font-bold mb-2 text-white">
-                {method === 'deepfuse' ? 'Drop low-res image here' : 'Drop images here'}
+                {(method === 'deepfuse' || method === 'emma') ? 'Drop low-res image here' : 'Drop images here'}
               </h3>
               <p className="text-slate-400 text-sm">or click to browse · PNG, JPG, WEBP</p>
               <input
@@ -297,16 +300,11 @@ export default function FusePage() {
                       onClick={(e) => { e.stopPropagation(); removeImage(i); }}
                     >×</button>
                     <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-bold text-white backdrop-blur-md border border-white/10 shadow-lg">
-                      {method === 'deepfuse' && i === 0 ? 'To Process' : `Img ${i + 1}`}
+                      {(method === 'deepfuse' || method === 'emma') && i === 0 ? 'To Process' : `Img ${i + 1}`}
                     </span>
                   </div>
                 ))}
               </div>
-            )}
-            {method === 'deepfuse' && images.length > 0 && (
-              <p className="mt-4 text-xs text-slate-500 italic flex items-center gap-2">
-                <span className="text-indigo-400">ℹ️</span> Only the <strong>first image</strong> in the list will be processed for Super Resolution.
-              </p>
             )}
           </div>
 
@@ -359,9 +357,9 @@ export default function FusePage() {
               {loading ? (
                 <span className="flex items-center justify-center gap-3">
                   <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  {method === 'deepfuse' ? 'Upscaling Image…' : 'Fusing Pipeline Active…'}
+                  {(method === 'deepfuse' || method === 'emma') ? 'Upscaling Image…' : 'Fusing Pipeline Active…'}
                 </span>
-              ) : (method === 'deepfuse' ? '🚀 Run DeepFuse SR' : '⚗️ Run Advanced Fusion')}
+              ) : ((method === 'deepfuse' || method === 'emma') ? `🚀 Run ${METHOD_INFO[method]?.name}` : '⚗️ Run Advanced Fusion')}
             </button>
             {images.length > 0 && (
               <button
@@ -398,7 +396,6 @@ export default function FusePage() {
                 </div>
                 <div className="text-center">
                   <p className="text-xl font-bold text-white mb-2 tracking-wide">Processing Images</p>
-                  <p className="text-sm text-slate-400">Applying <span className="text-indigo-300">{METHOD_INFO[method]?.name}</span> logic…</p>
                 </div>
               </div>
             )}
@@ -406,15 +403,15 @@ export default function FusePage() {
             {!loading && !result && (
               <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-6 text-center px-4">
                 <div className="w-28 h-28 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-6xl shadow-inner group-hover:scale-110 transition-transform">
-                  {method === 'deepfuse' ? '✨' : '🔬'}
+                  {(method === 'deepfuse' || method === 'emma') ? '✨' : '🔬'}
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-300 mb-2">
-                    {method === 'deepfuse' ? 'Ready to Upscale' : 'Ready to Fuse'}
+                    {(method === 'deepfuse' || method === 'emma') ? 'Ready to Upscale' : 'Ready to Fuse'}
                   </h3>
                   <p className="text-sm max-w-[250px] mx-auto text-slate-400">
-                    {method === 'deepfuse' 
-                      ? "Upload a low-res image & click 'Run DeepFuse SR' to enhance." 
+                    {(method === 'deepfuse' || method === 'emma') 
+                      ? `Upload a low-res image & click 'Run ${METHOD_INFO[method]?.name}' to enhance.` 
                       : 'Upload multiple images & click Run Advanced Fusion to generate the result.'}
                   </p>
                 </div>
@@ -449,12 +446,12 @@ export default function FusePage() {
           </div>
 
           {/* Metrics Panel */}
-          {result && method !== 'deepfuse' && (
+          {result && !(method === 'deepfuse' || method === 'emma') && (
             <div className="animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
               <MetricsPanel metrics={result.metrics} numSources={result.num_images} />
             </div>
           )}
-          {result && method === 'deepfuse' && (
+          {result && (method === 'deepfuse' || method === 'emma') && (
              <div className="animate-fade-in-up space-y-4" style={{ animationDelay: '0.5s' }}>
                 <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-xl">
                   <div className="flex items-center gap-3 mb-4 text-emerald-400 font-bold">

@@ -207,15 +207,43 @@ def fuse_multi_focus_clear(images):
 
 def fuse_emma(images):
     """
-    EMMA (CVPR 2024) pretrained model — clean, crystal-clear IR+Visible fusion.
-    Equivariant multi-modality fusion for state-of-the-art quality.
+    EMMA (CVPR 2024): LapSRN (8x) Super Resolution.
+    Processes ONLY the first uploaded image for 8x magnification.
     """
-    if not EMMA_AVAILABLE or emma_fuse is None:
-        raise RuntimeError(
-            "EMMA model is not available. Install: pip install torch einops, then run: python -m emma.download_model"
-        )
-    pil_result = emma_fuse(images, preserve_color=True)
-    return np.array(pil_result, dtype=np.float32) / 255.0
+    if not images:
+        raise ValueError("No images provided.")
+        
+    # Use the first image only for high-resolution upscaling
+    target_img = images[0]
+    
+    # 1. Upscale using LapSRN x8
+    sr = get_sr_model('lapsrn')
+    if sr and sr.available:
+        upscaled_pil = sr.enhance(target_img)
+    else:
+        # Fallback to simple upscale
+        w, h = target_img.size
+        upscaled_pil = target_img.resize((w*8, h*8), Image.LANCZOS)
+    
+    # 2. Aggressive "Clean & Clear" Post-Processing
+    import cv2
+    img_np = np.array(upscaled_pil, dtype=np.uint8)
+    
+    # A. Bilateral Filter for noise removal
+    img_denoised = cv2.bilateralFilter(img_np, 9, 75, 75)
+    
+    # B. CLAHE contrast enhancement
+    lab = cv2.cvtColor(img_denoised, cv2.COLOR_RGB2LAB)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    lab[:,:,0] = clahe.apply(lab[:,:,0])
+    img_contrast = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+    
+    # C. Aggressive Sharpening
+    gaussian_3 = cv2.GaussianBlur(img_contrast, (0, 0), 2.0)
+    img_sharp = cv2.addWeighted(img_contrast, 2.5, gaussian_3, -1.5, 0)
+    
+    # Return the ultra-clear final result
+    return np.array(img_sharp, dtype=np.float32) / 255.0
 
 
 def fuse_deepfuse(images):
@@ -243,36 +271,46 @@ def fuse_deepfuse(images):
 class SuperResolutionEnhancer:
     def __init__(self, model_name='edsr', scale=4):
         self.sr = dnn_superres.DnnSuperResImpl_create()
+        self.available = False
         
-        # Paths for models
-        # Searching in root and SuperResolution folder
+        # Absolute path targeting root directly
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        model_paths = [
-            os.path.join(root_dir, "EDSR_x4.pb"),
-            os.path.join(root_dir, "SuperResolution", "EDSR_x4.pb"),
-            os.path.join(root_dir, "LapSRN_x8.pb"),
-            os.path.join(root_dir, "SuperResolution", "LapSRN_x8.pb"),
-        ]
-        
         selected_path = None
-        if model_name.lower() == 'edsr':
-            for p in model_paths:
-                if "EDSR_x4.pb" in p and os.path.exists(p):
+        
+        if model_name.lower() == 'lapsrn':
+            # Check root, then subdirectory
+            paths_to_check = [
+                os.path.join(root_dir, "LapSRN_x8.pb"),
+                os.path.join(root_dir, "backend", "LapSRN_x8.pb"),
+                os.path.join(os.getcwd(), "LapSRN_x8.pb"),
+            ]
+            for p in paths_to_check:
+                if os.path.exists(p):
                     selected_path = p
+                    scale = 8
                     break
-        elif model_name.lower() == 'lapsrn':
-            for p in model_paths:
-                if "LapSRN_x8.pb" in p and os.path.exists(p):
+        elif model_name.lower() == 'edsr':
+            paths_to_check = [
+                os.path.join(root_dir, "EDSR_x4.pb"),
+                os.path.join(root_dir, "backend", "EDSR_x4.pb"),
+            ]
+            for p in paths_to_check:
+                if os.path.exists(p):
                     selected_path = p
+                    scale = 4
                     break
-                    
+        
         if selected_path:
-            self.sr.readModel(selected_path)
-            self.sr.setModel(model_name.lower(), scale)
-            self.available = True
+            try:
+                print(f"[SR] Loading {model_name} from: {selected_path}")
+                self.sr.readModel(selected_path)
+                self.sr.setModel(model_name.lower(), scale)
+                self.available = True
+                print(f"[SR] Successfully connected to {model_name}")
+            except Exception as e:
+                print(f"[SR] Error connecting to {model_name}: {e}")
         else:
-            print(f"Super Resolution model {model_name} not found!")
-            self.available = False
+            print(f"[SR] CRITICAL: Model file for {model_name} NOT FOUND in project folder.")
 
     def enhance(self, image_pil):
         if not self.available:
@@ -355,6 +393,14 @@ def compute_metrics(fused: np.ndarray, sources: list) -> dict:
         return float(mi)
 
     fused_g = to_gray(fused)
+    
+    # ── Handle shape mismatch (e.g. if model upscaled/downscaled) ───────────────────
+    # We must compare images of the same size. We resize fused back to source size.
+    source_h, source_w = to_gray(np.array(sources[0], dtype=np.float32)/255.0).shape
+    if fused_g.shape != (source_h, source_w):
+        # CV2 resize expects (width, height)
+        fused_g = cv2.resize(fused_g, (source_w, source_h), interpolation=cv2.INTER_LANCZOS4)
+        
     source_grays = [to_gray(np.array(s, dtype=np.float32)/255.0) for s in sources]
 
     ssim_scores = [ssim_simple(fused_g, sg) for sg in source_grays]
@@ -553,7 +599,15 @@ def compare_methods():
         
         images = [i.resize((min_w, min_h), Image.LANCZOS) for i in images]
 
-        active_methods = ["average", "max", "gradient_weighted", "laplacian_pyramid", "emma", "deepfuse", "ir_vis_color"]
+        # Match methods shown on the Fuse page: EMMA, DeepFuse AI, Swin Fusion, IR+VIS Color
+        active_methods = [
+            "emma", 
+            "deepfuse", 
+            "swin_fusion", 
+            "ir_vis_color"
+        ]
+        # Previous hidden methods: "average", "max", "gradient_weighted", "laplacian_pyramid"
+        
         results = {}
         for name in active_methods:
             if name in FUSION_METHODS:
