@@ -2,26 +2,6 @@ import { useState, useCallback, useRef } from 'react'
 import MetricsPanel from '../components/MetricsPanel.jsx'
 
 const METHOD_INFO = {
-  // average: { 
-  //   name: 'Average Fusion', icon: '⚖️', speed: 'Fast', quality: 'Basic',
-  //   desc: 'Pixel-wise averaging across all source images. Fast and simple baseline.',
-  //   border: 'hover:border-blue-500', bg: 'hover:bg-blue-500/10', glow: 'shadow-blue-500/30'
-  // },
-  // max: { 
-  //   name: 'Max Fusion', icon: '⬆️', speed: 'Fast', quality: 'Good',
-  //   desc: 'Preserves maximum intensity at each pixel. Great for bright features.',
-  //   border: 'hover:border-emerald-500', bg: 'hover:bg-emerald-500/10', glow: 'shadow-emerald-500/30'
-  // },
-  // gradient_weighted: { 
-  //   name: 'Gradient-Weighted', icon: '∇', speed: 'Medium', quality: 'Great',
-  //   desc: 'Weights pixels by local gradient magnitude, preserving fine details.',
-  //   border: 'hover:border-amber-500', bg: 'hover:bg-amber-500/10', glow: 'shadow-amber-500/30'
-  // },
-  // laplacian_pyramid: { 
-  //   name: 'Laplacian Pyramid', icon: '🔺', speed: 'Slow', quality: 'Excellent',
-  //   desc: 'Multi-scale pyramid fusion — classic approach combining frequency bands.',
-  //   border: 'hover:border-purple-500', bg: 'hover:bg-purple-500/10', glow: 'shadow-purple-500/30'
-  // },
   emma: { 
     name: 'EMMA (CVPR 2024)', icon: '🔬', speed: 'Medium', quality: '8x Ultra-Res',
     desc: 'Pretrained equivariant multi-modality fusion. Clean, crystal-clear output — best for IR+Visible pairs.',
@@ -32,25 +12,45 @@ const METHOD_INFO = {
     desc: 'Advanced saliency-based deep fusion combined with EDSR Super-Resolution enhancement.',
     border: 'hover:border-indigo-400', bg: 'hover:bg-indigo-500/10', glow: 'shadow-indigo-500/40'
   },
+  esrgan: { 
+    name: 'Swin Fusion (Transformer)', icon: '🧩', speed: 'Slow', quality: 'State-of-the-Art',
+    desc: 'Transformer-based multi-modal fusion with specialized ESRGAN-SR texture recovery. Best for medical and satellite imagery.',
+    border: 'hover:border-pink-500', bg: 'hover:bg-pink-500/10', glow: 'shadow-pink-500/40'
+  }
+}
+
+// These models are currently hidden to keep the interface focused
+const HIDDEN_MODELS = {
   swin_fusion: {  
-    name: 'Swin Fusion (Transformer)', icon: '🧩', speed: 'Medium', quality: 'State-of-the-Art',
-    desc: 'Transformer-based fusion. Clean, crystal-clear output for multi-modal image pairs.',
-    border: 'hover:border-pink-500', bg: 'hover:bg-pink-500/10',  glow: 'shadow-pink-500/40'
+    name: 'Actual Swin Fusion', icon: '🧩', speed: 'Medium', quality: 'Good',
+    desc: 'Standard transformer-based fusion without SR.',
+    border: 'hover:border-slate-500', bg: 'hover:bg-slate-500/10', glow: 'shadow-slate-500/30'
   },
   ir_vis_color: { 
     name: 'Infrared+Visible Fusion', icon: '🌈', speed: 'Medium', quality: 'Exceptional',
     desc: 'Dual-scale HSV fusion. Perfectly preserves visible colors while injecting sharp glowing infrared thermal details.',
     border: 'hover:border-orange-500', bg: 'hover:bg-orange-500/10', glow: 'shadow-orange-500/40'
   },
-  esrgan: { 
-    name: 'ESRGAN-SR', icon: '💎', speed: 'Slow', quality: 'Photo-Realistic',
-    desc: 'Enhanced Super-Resolution GAN. Best for realistic textures and sharp edges using the RRDB_PSNR_x4 model.',
-    border: 'hover:border-blue-400', bg: 'hover:bg-blue-500/10', glow: 'shadow-blue-500/40'
-  }
-}
-
-// These models are currently hidden to keep the interface focused
-const HIDDEN_MODELS = {
+  average: { 
+    name: 'Average Fusion', icon: '⚖️', speed: 'Fast', quality: 'Basic',
+    desc: 'Pixel-wise averaging across all source images.',
+    border: 'hover:border-blue-500', bg: 'hover:bg-blue-500/10', glow: 'shadow-blue-500/30'
+  },
+  max: { 
+    name: 'Max Fusion', icon: '⬆️', speed: 'Fast', quality: 'Good',
+    desc: 'Preserves maximum intensity at each pixel.',
+    border: 'hover:border-emerald-500', bg: 'hover:bg-emerald-500/10', glow: 'shadow-emerald-500/30'
+  },
+  gradient_weighted: { 
+    name: 'Gradient-Weighted', icon: '∇', speed: 'Medium', quality: 'Great',
+    desc: 'Weights pixels by local gradient magnitude.',
+    border: 'hover:border-amber-500', bg: 'hover:bg-amber-500/10', glow: 'shadow-amber-500/30'
+  },
+  laplacian_pyramid: { 
+    name: 'Laplacian Pyramid', icon: '🔺', speed: 'Slow', quality: 'Excellent',
+    desc: 'Multi-scale pyramid fusion — classic approach.',
+    border: 'hover:border-purple-500', bg: 'hover:bg-purple-500/10', glow: 'shadow-purple-500/30'
+  },
   multi_focus_clear: { 
     name: 'Blur+Clear → Clean', icon: '✨', speed: 'Medium', quality: 'Excellent',
     desc: 'Blur + clear images → crystal-clear output. Matches pixels, picks sharper regions.',
@@ -66,11 +66,6 @@ const HIDDEN_MODELS = {
     desc: 'Advanced per-pixel saliency, Laplacian Pyramid, and unsharp masking for crystal clear output.',
     border: 'hover:border-indigo-400', bg: 'hover:bg-indigo-500/10', glow: 'shadow-indigo-500/40'
   },
-  // ir_vis_color: { 
-  //   name: 'IR+VIS Color Fusion', icon: '🌈', speed: 'Medium', quality: 'Exceptional',
-  //   desc: 'Dual-scale HSV fusion. Preserves vibrant visible colors while injecting bright thermal details.',
-  //   border: 'hover:border-pink-500', bg: 'hover:bg-pink-500/10', glow: 'shadow-pink-500/40'
-  // },
 };
 
 export default function FusePage() {
@@ -112,8 +107,10 @@ export default function FusePage() {
     addFiles(e.dataTransfer.files)
   }, [addFiles])
 
+  // Determine if the current method uses Super Resolution
+  const isSR = ['emma', 'deepfuse', 'swin_fusion', 'ir_vis_color', 'esrgan'].includes(method);
+
   const handleFuse = async () => {
-    const isSR = method === 'deepfuse' || method === 'emma' || method === 'esrgan';
     if (images.length < (isSR ? 1 : 2)) {
       setError(`Please upload at least ${isSR ? '1 image' : '2 images'}.`);
       return;
@@ -128,10 +125,11 @@ export default function FusePage() {
       if (isSR) {
         // Use Super Resolution API
         fd.append('image', images[0].file)
-        // If EMMA, we force LapSRN, otherwise use the selected srModel (for DeepFuse or ESRGAN mode)
-        let selectedSR = srModel;
+        // AUTO-CONNECT MODELS TO SR:
+        let selectedSR = 'edsr'; // Default
         if (method === 'emma') selectedSR = 'lapsrn';
         if (method === 'esrgan') selectedSR = 'esrgan';
+        if (method === 'deepfuse') selectedSR = 'edsr';
         
         fd.append('model', selectedSR)
         
@@ -173,14 +171,14 @@ export default function FusePage() {
     <div className="w-full flex flex-col gap-10 pb-8">
       {/* HERO */}
       <div className="text-center pt-8 pb-4 animate-fade-in-up">
-        <div className="inline-block px-4 py-1.5 mb-6 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 font-medium text-sm shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-          {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? '✨ Image Enhancement Engine' : '⚗️ Multi-Modal Fusion Engine'}
+        <div className="inline-block px-4 py-1.5 mb-6 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 font-medium text-sm shadow-[0_0_1rem_rgba(99,102,241,0.25)]">
+          {isSR ? '✨ Image Enhancement Engine' : '⚗️ Multi-Modal Fusion Engine'}
         </div>
         <h1 className="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-200 to-slate-400 drop-shadow-lg text-balance">
-          {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? 'Super Resolution AI' : 'Fuse. Enhance. Discover.'}
+          {isSR ? 'Super Resolution AI' : 'Fuse. Enhance. Discover.'}
         </h1>
         <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') 
+          {isSR 
             ? 'Transform low-resolution images into crystal-clear high-definition versions using state-of-the-art AI upscaling.'
             : 'Upload 2–6 source images (e.g. Infrared & Visible, Multi-exposure) and select a fusion algorithm. Get crystal-clear results instantly.'}
         </p>
@@ -264,9 +262,9 @@ export default function FusePage() {
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl shadow-xl p-8 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
             <div className="flex items-center gap-3 mb-6 text-xl font-bold text-white">
               <span className="p-2.5 rounded-xl bg-white/10 shadow-inner border border-white/5">📁</span>
-              {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? 'Upload Low-Res Images' : 'Source Images'}
+              {isSR ? 'Upload Low-Res Images' : 'Source Images'}
               <span className="ml-auto text-sm bg-indigo-500/20 px-4 py-1.5 rounded-full text-indigo-300 border border-indigo-500/20 shadow-inner">
-                {images.length}{(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? '' : '/6'} uploaded
+                {images.length}{isSR ? '' : '/6'} uploaded
               </span>
             </div>
 
@@ -281,10 +279,10 @@ export default function FusePage() {
               onDrop={handleDrop}
             >
               <div className="text-5xl mb-4 transform transition-transform group-hover:scale-110 drop-shadow-lg">
-                {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? '✨' : '🖼️'}
+                {isSR ? '✨' : '🖼️'}
               </div>
               <h3 className="text-xl font-bold mb-2 text-white">
-                {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? 'Drop low-res image here' : 'Drop images here'}
+                {isSR ? 'Drop low-res image here' : 'Drop images here'}
               </h3>
               <p className="text-slate-400 text-sm">or click to browse · PNG, JPG, WEBP</p>
               <input
@@ -308,7 +306,7 @@ export default function FusePage() {
                       onClick={(e) => { e.stopPropagation(); removeImage(i); }}
                     >×</button>
                     <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-bold text-white backdrop-blur-md border border-white/10 shadow-lg">
-                      {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') && i === 0 ? 'To Process' : `Img ${i + 1}`}
+                      {isSR && i === 0 ? 'To Process' : `Img ${i + 1}`}
                     </span>
                   </div>
                 ))}
@@ -316,36 +314,6 @@ export default function FusePage() {
             )}
           </div>
 
-          {/* 🚀 SUPER RESOLUTION INPUTS (Only for DeepFuse and ESRGAN) */}
-          {(method === 'deepfuse' || method === 'esrgan') && (
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-3xl shadow-xl p-8 animate-fade-in-up">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                <span className="p-2 rounded-xl bg-white/10 shadow-inner border border-white/5">✨</span>
-                Super Resolution Settings
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                  { id: 'edsr',   name: 'EDSR (x4)',   desc: 'Clean & Balanced upscaling.' },
-                  { id: 'lapsrn', name: 'LapSRN (x8)', desc: 'Max 8x magnification.' },
-                  { id: 'esrgan', name: 'ESRGAN (x4)', desc: 'Photo-realistic texture recovery.' },
-                ].map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setSrModel(m.id)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-300 ${
-                      srModel === m.id 
-                        ? 'bg-indigo-600/20 border-indigo-500/50 ring-1 ring-indigo-500 shadow-[0_0_1rem_rgba(99,102,241,0.25)]' 
-                        : 'bg-white/5 border-white/10 hover:bg-white/10'
-                    }`}
-                  >
-                    <p className={`font-bold ${srModel === m.id ? 'text-indigo-300' : 'text-white'}`}>{m.name}</p>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">{m.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
           {/* Error */}
           {error && (
             <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-200 font-medium flex items-center gap-3 shadow-[0_0_1.2rem_rgba(239,68,68,0.1)]">
@@ -357,18 +325,18 @@ export default function FusePage() {
           <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
             <button
                className={`flex-1 text-xl py-5 rounded-2xl font-bold text-white shadow-[0_0.6rem_2rem_rgba(99,102,241,0.3)] transition-all duration-300
-                ${(loading || images.length < ((method === 'deepfuse' || method === 'esrgan') ? 1 : 2)) 
+                ${(loading || images.length < (isSR ? 1 : 2)) 
                   ? 'bg-indigo-600/50 cursor-not-allowed opacity-70' 
                   : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 hover:shadow-[0_0.6rem_2.5rem_rgba(99,102,241,0.5)] hover:-translate-y-1'}`}
-              disabled={loading || images.length < ((method === 'deepfuse' || method === 'esrgan') ? 1 : 2)}
+              disabled={loading || images.length < (isSR ? 1 : 2)}
               onClick={handleFuse}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-3">
                   <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? 'Upscaling Image…' : 'Fusing Pipeline Active…'}
+                  {isSR ? 'Upscaling Image…' : 'Fusing Pipeline Active…'}
                 </span>
-              ) : ((method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? `🚀 Run ${METHOD_INFO[method]?.name}` : '⚗️ Run Advanced Fusion')}
+              ) : (isSR ? `🚀 Run ${METHOD_INFO[method]?.name}` : '⚗️ Run Advanced Fusion')}
             </button>
             {images.length > 0 && (
               <button
@@ -412,14 +380,14 @@ export default function FusePage() {
             {!loading && !result && (
               <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-6 text-center px-4">
                 <div className="w-28 h-28 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-6xl shadow-inner group-hover:scale-110 transition-transform">
-                  {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? '✨' : '🔬'}
+                  {isSR ? '✨' : '🔬'}
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-300 mb-2">
-                    {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') ? 'Ready to Upscale' : 'Ready to Fuse'}
+                    {isSR ? 'Ready to Upscale' : 'Ready to Fuse'}
                   </h3>
                   <p className="text-sm max-w-[250px] mx-auto text-slate-400">
-                    {(method === 'deepfuse' || method === 'emma' || method === 'esrgan') 
+                    {isSR 
                       ? `Upload a low-res image & click 'Run ${METHOD_INFO[method]?.name}' to enhance.` 
                       : 'Upload multiple images & click Run Advanced Fusion to generate the result.'}
                   </p>
@@ -438,8 +406,8 @@ export default function FusePage() {
                   />
                   <div className="absolute inset-0 pointer-events-none ring-1 ring-inset ring-white/10 rounded-2xl"></div>
                   <span className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-4 py-2 rounded-xl text-sm font-bold border border-white/20 text-white shadow-xl flex items-center gap-2">
-                    <span className="text-lg">{METHOD_INFO[result.method]?.icon}</span>
-                    {METHOD_INFO[result.method]?.name}
+                    <span className="text-lg">{METHOD_INFO[result.method]?.icon || '✨'}</span>
+                    {METHOD_INFO[result.method]?.name || 'Processed Result'}
                   </span>
                 </div>
 
@@ -455,12 +423,12 @@ export default function FusePage() {
           </div>
 
           {/* Metrics Panel */}
-          {result && !(method === 'deepfuse' || method === 'emma' || method === 'esrgan') && (
+          {result && !isSR && (
             <div className="animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
               <MetricsPanel metrics={result.metrics} numSources={result.num_images} />
             </div>
           )}
-          {result && (method === 'deepfuse' || method === 'emma' || method === 'esrgan') && (
+          {result && isSR && (
              <div className="animate-fade-in-up space-y-4" style={{ animationDelay: '0.5s' }}>
                 <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-xl">
                   <div className="flex items-center gap-3 mb-4 text-emerald-400 font-bold">
