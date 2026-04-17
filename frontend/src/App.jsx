@@ -27,21 +27,21 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* NAVBAR */}
-      <nav className="sticky top-0 z-50 glass-panel border-b border-white/10 px-6 py-4 mb-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <a className="flex items-center gap-3 cursor-pointer" onClick={() => setTab('fuse')}>
-            <div className="text-2xl p-2 rounded-lg bg-white/5 border border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.3)]">🔬</div>
+      <nav className="sticky top-0 z-50 glass-panel border-b border-white/10 px-4 sm:px-6 py-4 mb-8">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <a className="flex items-center gap-3 cursor-pointer self-start sm:self-auto" onClick={() => setTab('fuse')}>
+            <div className="text-2xl p-2 rounded-lg bg-white/5 border border-white/10 shadow-[0_0_1rem_rgba(99,102,241,0.3)]">🔬</div>
             <span className="text-xl font-bold text-gradient">Image Fusion Lab</span>
           </a>
 
-          <div className="flex p-1 bg-black/40 rounded-xl border border-white/5 backdrop-blur-md">
+          <div className="flex p-1 bg-black/40 rounded-xl border border-white/5 backdrop-blur-md overflow-x-auto max-w-full">
             {TABS.map(t => (
               <button
                 key={t.id}
                 id={`tab-${t.id}`}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all duration-300 ${
+                className={`flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg font-medium transition-all duration-300 whitespace-nowrap ${
                   tab === t.id 
-                    ? 'bg-indigo-600 text-white shadow-[0_4px_15px_rgba(99,102,241,0.4)]' 
+                    ? 'bg-indigo-600 text-white shadow-[0_0.25rem_1rem_rgba(99,102,241,0.4)]' 
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
                 onClick={() => setTab(t.id)}
@@ -51,8 +51,8 @@ export default function App() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/5 text-sm font-medium">
-            <span className={`w-2.5 h-2.5 rounded-full ${apiOnline === false ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : apiOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-yellow-400 animate-pulse'}`} />
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/5 text-sm font-medium">
+            <span className={`w-2.5 h-2.5 rounded-full ${apiOnline === false ? 'bg-red-500 shadow-[0_0_0.5rem_rgba(239,68,68,0.5)]' : apiOnline ? 'bg-emerald-400 shadow-[0_0_0.5rem_rgba(52,211,153,0.5)]' : 'bg-yellow-400 animate-pulse'}`} />
             <span className={apiOnline === false ? 'text-red-400' : 'text-slate-300'}>
               {apiOnline === null ? 'Connecting…' : apiOnline ? 'API Online' : 'API Offline'}
             </span>

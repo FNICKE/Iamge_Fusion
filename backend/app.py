@@ -28,6 +28,14 @@ except ImportError:
     EMMA_AVAILABLE = False
     emma_fuse = None
 
+# ESRGAN Support
+try:
+    import torch
+    import RRDBNet_arch as arch
+    ESRGAN_AVAILABLE = True
+except ImportError:
+    ESRGAN_AVAILABLE = False
+
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
@@ -326,12 +334,51 @@ class SuperResolutionEnhancer:
         upscaled_rgb = cv2.cvtColor(upscaled_cv, cv2.COLOR_BGR2RGB)
         return Image.fromarray(upscaled_rgb)
 
+class ESRGANEnhancer:
+    def __init__(self, model_name='RRDB_PSNR_x4'):
+        self.available = False
+        if not ESRGAN_AVAILABLE:
+            print("[ESRGAN] Torch or RRDBNet_arch missing.")
+            return
+
+        model_path = os.path.join(os.path.dirname(__file__), "models", f"{model_name}.pth")
+        if not os.path.exists(model_path):
+            print(f"[ESRGAN] Model file not found at {model_path}")
+            return
+
+        try:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            self.model = arch.RRDBNet(3, 3, 64, 23, gc=32)
+            self.model.load_state_dict(torch.load(model_path, map_location=self.device), strict=True)
+            self.model.eval()
+            self.model = self.model.to(self.device)
+            self.available = True
+            print(f"[ESRGAN] Successfully loaded {model_name} on {self.device}")
+        except Exception as e:
+            print(f"[ESRGAN] Error loading model: {e}")
+
+    def enhance(self, image_pil):
+        if not self.available:
+            return image_pil
+        
+        img = np.array(image_pil.convert("RGB")) * 1.0 / 255
+        img = torch.from_numpy(np.transpose(img[:, :, [2, 1, 0]], (2, 0, 1))).float()
+        img_LR = img.unsqueeze(0).to(self.device)
+
+        with torch.no_grad():
+            output = self.model(img_LR).data.squeeze().float().cpu().clamp_(0, 1).numpy()
+        
+        output = np.transpose(output[[2, 1, 0], :, :], (1, 2, 0))
+        output = (output * 255.0).round().astype(np.uint8)
+        return Image.fromarray(output)
+
 # Global instances (lazy loading)
 SR_EDSR = None
 SR_LAPSRN = None
+SR_ESRGAN = None
 
 def get_sr_model(model_name):
-    global SR_EDSR, SR_LAPSRN
+    global SR_EDSR, SR_LAPSRN, SR_ESRGAN
     try:
         if model_name.lower() == 'edsr':
             if SR_EDSR is None:
@@ -343,6 +390,11 @@ def get_sr_model(model_name):
                 print("Loading LapSRN model (Lazy)...")
                 SR_LAPSRN = SuperResolutionEnhancer('lapsrn', 8)
             return SR_LAPSRN
+        elif model_name.lower() == 'esrgan':
+            if SR_ESRGAN is None:
+                print("Loading ESRGAN model (Lazy)...")
+                SR_ESRGAN = ESRGANEnhancer('RRDB_PSNR_x4')
+            return SR_ESRGAN
     except Exception as e:
         print(f"Error initializing {model_name} model: {e}")
     return None
@@ -641,7 +693,7 @@ def super_resolve():
     try:
         start = time.time()
         
-        model_type = request.form.get("model", "edsr") # edsr or lapsrn
+        model_type = request.form.get("model", "edsr") # edsr, lapsrn, or esrgan
         
         if "image" not in request.files:
             return jsonify({"error": "No image uploaded"}), 400
@@ -663,7 +715,12 @@ def super_resolve():
         sr_model = get_sr_model(model_type)
         if sr_model and sr_model.available:
             result_img = sr_model.enhance(img)
-            method_used = "LapSRN (8x)" if model_type == "lapsrn" else "EDSR (4x)"
+            if model_type == "lapsrn":
+                method_used = "LapSRN (8x)"
+            elif model_type == "esrgan":
+                method_used = "ESRGAN (4x) - RRDB_PSNR"
+            else:
+                method_used = "EDSR (4x)"
         else:
             return jsonify({"error": "Super Resolution model not available"}), 500
             
