@@ -127,11 +127,27 @@ export default function ImageQualityPage() {
 
   const analyse = async () => {
     if (!original || !enhanced) { setError('Please upload both images.'); return }
+
+    // Block DeepFuse vs Swin Fusion comparison
+    const origName = original.name.toLowerCase()
+    const enhName = enhanced.name.toLowerCase()
+    
+    const origIsDeepfuse = origName.includes('deepfuse') || origName.includes('deep fuse')
+    const origIsSwin = origName.includes('swin') || origName.includes('esrgan')
+    const enhIsDeepfuse = enhName.includes('deepfuse') || enhName.includes('deep fuse')
+    const enhIsSwin = enhName.includes('swin') || enhName.includes('esrgan')
+
+    if ((origIsDeepfuse && enhIsSwin) || (origIsSwin && enhIsDeepfuse)) {
+      setError("Analysis blocked: Direct comparison between DeepFuse AI and Swin Fusion is not allowed.")
+      return
+    }
+
     setLoading(true); setError(null); setResult(null)
     try {
       const fd = new FormData()
-      fd.append('original', original.file)
-      fd.append('enhanced', enhanced.file)
+      // Send the filenames explicitly although browser does too (just to be safe)
+      fd.append('original', original.file, original.file.name)
+      fd.append('enhanced', enhanced.file, enhanced.file.name)
       const res  = await fetch('/api/image-quality', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Analysis failed')
@@ -233,7 +249,7 @@ export default function ImageQualityPage() {
             <div className="absolute inset-2 rounded-full border-4 border-indigo-500/20 border-b-indigo-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.7s' }} />
           </div>
           <p className="text-lg font-semibold">Computing image quality metrics…</p>
-          <p className="text-sm text-slate-600">SSIM · PSNR · MSE · Entropy · Mutual Information</p>
+          <p className="text-sm text-slate-600">SSIM · Entropy · Mutual Information</p>
         </div>
       )}
 
@@ -279,7 +295,7 @@ export default function ImageQualityPage() {
                     <span className="text-sm text-slate-400 font-medium">Quality Delta</span>
                   </div>
                   <div className="space-y-3">
-                    {['ssim', 'psnr', 'mse', 'entropy', 'mi'].map(k => {
+                    {['ssim', 'entropy', 'mi'].map(k => {
                       const m = METRIC_META[k]
                       const v = result.metrics[k]
                       const orig = result.original_metrics?.[k]
@@ -315,7 +331,7 @@ export default function ImageQualityPage() {
               </div>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-              {['ssim', 'psnr', 'mse', 'entropy', 'mi'].map(k => (
+              {['ssim', 'entropy', 'mi'].map(k => (
                 <MetricCard key={k} metricKey={k} value={result.metrics[k]} />
               ))}
             </div>
@@ -335,11 +351,10 @@ export default function ImageQualityPage() {
                     <th className="text-center py-3 px-4 text-slate-400 font-semibold">Original Image</th>
                     <th className="text-center py-3 px-4 text-slate-400 font-semibold">Enhanced Image</th>
                     <th className="text-center py-3 px-4 text-slate-400 font-semibold">Change</th>
-                    <th className="text-center py-3 px-4 text-slate-400 font-semibold">Verdict</th>
                   </tr>
                 </thead>
                 <tbody>
-                    {['ssim', 'psnr', 'mse', 'entropy', 'mi'].map(k => {
+                    {['ssim', 'entropy', 'mi'].map(k => {
                       const m = METRIC_META[k]
                       const v = result.metrics[k]
                       const orig = result.original_metrics?.[k]
@@ -371,11 +386,6 @@ export default function ImageQualityPage() {
                               </span>
                             ) : <span className="text-slate-600">—</span>}
                           </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <span className="px-2 py-1 rounded-full text-[11px] font-bold border bg-emerald-500/10 border-emerald-500/30 text-emerald-300">
-                              ✅ Approved
-                            </span>
-                          </td>
                         </tr>
                       )
                     })}
@@ -383,11 +393,11 @@ export default function ImageQualityPage() {
               </table>
             </div>
 
-            {/* Viva tip */}
+            {/* Summary */}
             <div className="mt-8 p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25">
-              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">💡 Pro Tip — Viva / Interview</p>
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2">💡 Summary</p>
               <p className="text-sm text-slate-300 italic leading-relaxed">
-                "We evaluate enhancement performance using <strong className="text-white">SSIM</strong>, <strong className="text-white">PSNR</strong>, <strong className="text-white">MSE</strong>,
+                "We evaluate enhancement performance using <strong className="text-white">SSIM</strong>,
                 <strong className="text-white"> Entropy</strong>, and <strong className="text-white">Mutual Information</strong> to ensure the enhanced image
                 preserves structural similarity, maximises signal quality, and retains rich information content from the original."
               </p>

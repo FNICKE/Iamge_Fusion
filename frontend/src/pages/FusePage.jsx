@@ -125,13 +125,24 @@ export default function FusePage() {
       if (isSR) {
         // Use Super Resolution API
         fd.append('image', images[0].file)
-        // AUTO-CONNECT MODELS TO SR:
-        let selectedSR = 'edsr'; // Default
-        if (method === 'emma') selectedSR = 'lapsrn';
-        if (method === 'esrgan') selectedSR = 'esrgan';
-        if (method === 'deepfuse') selectedSR = 'edsr';
-        
+
+        // Map UI model → internal SR engine
+        const SR_ENGINE_MAP = {
+          emma:     'lapsrn',   // EMMA uses LapSRN 8x
+          deepfuse: 'edsr',     // DeepFuse AI uses EDSR 4x
+          esrgan:   'esrgan',   // Swin Fusion uses ESRGAN 4x
+        };
+        const selectedSR = SR_ENGINE_MAP[method] || 'edsr';
         fd.append('model', selectedSR)
+
+        // Send the UI model name so the backend saves into the correct folder
+        // emma → results/emma/, deepfuse → results/deepfuse/, esrgan → results/swin_fusion/
+        const FOLDER_MAP = {
+          emma:     'emma',
+          deepfuse: 'deepfuse',
+          esrgan:   'swin_fusion',
+        };
+        fd.append('folder_name', FOLDER_MAP[method] || method)
         
         const res = await fetch('/api/super-resolve', { method: 'POST', body: fd })
         const data = await res.json()
@@ -141,7 +152,7 @@ export default function FusePage() {
         setResult({
           ...data,
           num_images: 1,
-          metrics: { ssim_avg: 'N/A', entropy: 'N/A', mi_avg: 'N/A' } // SR doesn't have fusion metrics
+          metrics: { ssim_avg: 'N/A', entropy: 'N/A', mi_avg: 'N/A' }
         })
       } else {
         // Use standard Fusion API
@@ -360,6 +371,11 @@ export default function FusePage() {
               {result && (
                 <span className="ml-auto text-xs text-emerald-300 bg-emerald-500/20 px-3 py-1.5 rounded-full border border-emerald-500/30 font-bold shadow-[0_0_1rem_rgba(16,185,129,0.15)]">
                   ✓ Done in {result.time_seconds}s
+                </span>
+              )}
+              {result?.used_fallback && (
+                <span className="text-xs text-amber-300 bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-500/30 font-bold">
+                  ⚠️ Fallback Mode
                 </span>
               )}
             </div>
