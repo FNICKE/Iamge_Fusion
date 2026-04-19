@@ -141,48 +141,35 @@ export default function ImageQualityPage() {
     const enhName = enhanced.name.toLowerCase()
 
     // 1. Validation: "Check the image same or not"
-    if (original.w && enhanced.w && (original.w !== enhanced.w || original.h !== enhanced.h)) {
-      setError("Error: Images are not same. Please upload processed versions of the same original image.")
-      setLoading(false); return
+    // Since some models (like Super Resolution) change dimensions, check aspect ratio instead of absolute pixels.
+    if (original.w && enhanced.w && original.h && enhanced.h) {
+      const origRatio = original.w / original.h;
+      const enhRatio = enhanced.w / enhanced.h;
+      // Allow minor floating point differences (e.g., due to slight rounding in resizing)
+      if (Math.abs(origRatio - enhRatio) > 0.05) {
+        setError("Error: Images are not same. Please upload processed versions of the same original image.")
+        setLoading(false); return
+      }
     }
 
-    // 2. Index Check: If both are the same model type, the numbers/indices must match
+    // 2. Index Check: Ensure both images correspond to the same source image by their index number
     const getParts = (n) => {
       const base = n.split('.')[0]
-      const numMatch = base.match(/\d+$/)
+      const numMatch = base.match(/\d+/)
       return { 
-        name: base.replace(/[0-9]/g, '').replace(/(_|-)$/, ''), 
+        name: base.replace(/[0-9]/g, '').replace(/(_|-)+/g, ''), 
         idx: numMatch ? numMatch[0] : null 
       }
     }
     const p1 = getParts(origName), p2 = getParts(enhName)
-    // If same model but index differs -> Error
-    if (p1.name === p2.name && p1.idx !== p2.idx) {
-      setError(`Error: You are comparing ${p1.name} index ${p1.idx} with index ${p2.idx}. Indices must match.`)
+    
+    // Enforce that if both images have an index, they must be the same
+    if (p1.idx && p2.idx && p1.idx !== p2.idx) {
+      setError(`Error: Image mismatch! You uploaded reference image index '${p1.idx}' but enhanced image index '${p2.idx}'. They must be the same image.`)
       setLoading(false); return
     }
 
-    const origIsDeep = origName.includes('deepfuse') || origName.includes('deep fuse')
-    const origIsSwin = origName.includes('swin') || origName.includes('esrgan')
-    const enhIsDeep = enhName.includes('deepfuse') || enhName.includes('deep fuse')
-    const enhIsSwin = enhName.includes('swin') || enhName.includes('esrgan')
-
-    // 3. Instant Results
-    if (origIsDeep && enhIsSwin) {
-      setResult({
-        metrics: { ssim: 0.1245, psnr: 11.82, mse: 1450.2, entropy: 2.15, mi: 0.38 },
-        original_metrics: { ssim: 0.9920, psnr: 44.15, mse: 1.2, entropy: 7.82, mi: 4.95 }
-      })
-      setLoading(false); return
-    }
-
-    if (origIsSwin && enhIsDeep) {
-      setResult({
-        metrics: { ssim: 0.9892, psnr: 43.12, mse: 3.8, entropy: 8.12, mi: 5.15 },
-        original_metrics: { ssim: 0.7250, psnr: 26.42, mse: 185.2, entropy: 5.12, mi: 1.08 }
-      })
-      setLoading(false); return
-    }
+    // Ensure requests go directly to the newly generalized backend metrics logic
 
     try {
       const fd = new FormData()

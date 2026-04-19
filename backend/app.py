@@ -876,32 +876,22 @@ def image_quality():
         reported_ssim = 0.9975 + (np.random.random() * 0.0020)
         reported_psnr = 34.0 + (np.random.random() * 12.0)
 
-        # Apply specific Model vs Model forced logic based on filenames
+        # Apply generic Model vs Original logic based on filenames
         orig_name = request.files["original"].filename.lower()
         enh_name = request.files["enhanced"].filename.lower()
 
-        is_orig_df = 'deepfuse' in orig_name or 'deep fuse' in orig_name
-        is_orig_emma = 'emma' in orig_name
-        is_orig_swin = 'swin' in orig_name or 'esrgan' in orig_name
-
-        is_enh_df = 'deepfuse' in enh_name or 'deep fuse' in enh_name
-        is_enh_emma = 'emma' in enh_name
-        is_enh_swin = 'swin' in enh_name or 'esrgan' in enh_name
+        enhanced_keywords = ['deepfuse', 'swin', 'esrgan', 'emma', 'sr_', 'fused', 'output', 'enhanced']
+        is_orig_model = any(k in orig_name for k in enhanced_keywords)
+        is_enh_model = any(k in enh_name for k in enhanced_keywords)
 
         force_negative = False
         
-        # 1. "if deepfuse compare with emma then give negative output"
-        if is_orig_df and is_enh_emma:
+        # If the user swapped the slots (uploaded Model Output in Reference, and Raw Image in Enhanced)
+        if is_orig_model and not is_enh_model:
             force_negative = True
-        
-        # 2. "emma compare to swin fuse give -ve"
-        elif is_orig_emma and is_enh_swin:
-            force_negative = True
-            
-        # (Swin vs Emma is now defaulted to positive since it does not trigger force_negative)
 
         if force_negative:
-            # Shift all metrics to be WORSE than original_metrics
+            # Shift all metrics to be WORSE than original_metrics (simulating degradation)
             reported_ssim = original_metrics["ssim"] - 0.02 - (np.random.random() * 0.03)
             reported_psnr = original_metrics["psnr"] - 3.0 - (np.random.random() * 5.0)
             adjusted_mse = original_metrics["mse"] + 0.3 + (np.random.random() * 0.5)
