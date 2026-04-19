@@ -71,14 +71,7 @@ export default function App() {
 
       {/* FOOTER */}
       <footer className="py-6 text-center text-slate-500 text-sm border-t border-white/5 bg-black/20 backdrop-blur-md">
-        <p>
-          Image Fusion Lab — Infrared × Visible · Medical · Multi-Exposure |{' '}
-          Built with{' '}
-          <a href="https://tailwindcss.com" target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 transition-colors">
-            Tailwind CSS
-          </a>
-          {' '}and Advanced Deep Learning Image Fusion
-        </p>
+        <p>© {new Date().getFullYear()} Image Fusion Lab</p>
       </footer>
     </div>
   )
