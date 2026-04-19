@@ -152,22 +152,7 @@ export default function ImageQualityPage() {
       }
     }
 
-    // 2. Index Check: Ensure both images correspond to the same source image by their index number
-    const getParts = (n) => {
-      const base = n.split('.')[0]
-      const numMatch = base.match(/\d+/)
-      return { 
-        name: base.replace(/[0-9]/g, '').replace(/(_|-)+/g, ''), 
-        idx: numMatch ? numMatch[0] : null 
-      }
-    }
-    const p1 = getParts(origName), p2 = getParts(enhName)
-    
-    // Enforce that if both images have an index, they must be the same
-    if (p1.idx && p2.idx && p1.idx !== p2.idx) {
-      setError(`Error: Image mismatch! You uploaded reference image index '${p1.idx}' but enhanced image index '${p2.idx}'. They must be the same image.`)
-      setLoading(false); return
-    }
+
 
     // Ensure requests go directly to the newly generalized backend metrics logic
 
