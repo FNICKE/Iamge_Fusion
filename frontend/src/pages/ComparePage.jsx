@@ -1,19 +1,21 @@
 import { useState, useCallback, useRef } from 'react'
 
 const METHOD_LABELS = {
+  swin_fusion:       { name: 'Swin Fusion',        icon: '🧩', color: 'from-pink-500 to-pink-700' },
+  deepfuse:          { name: 'DeepFuse AI',        icon: '🚀', color: 'from-indigo-500 to-indigo-700' },
+  emma:              { name: 'EMMA (CVPR 2024)',   icon: '🔬', color: 'from-cyan-500 to-cyan-700' },
+  ir_vis_color:      { name: 'IR+Vis Color',       icon: '🌈', color: 'from-orange-500 to-orange-700' },
   average:           { name: 'Average Fusion',    icon: '⚖️', color: 'from-blue-500 to-blue-700' },
   max:               { name: 'Max Fusion',         icon: '⬆️', color: 'from-emerald-500 to-emerald-700' },
   gradient_weighted: { name: 'Gradient-Weighted',  icon: '∇',  color: 'from-amber-500 to-amber-700' },
   laplacian_pyramid: { name: 'Laplacian Pyramid',  icon: '🔺', color: 'from-purple-500 to-purple-700' },
-  emma:              { name: 'EMMA (CVPR 2024)',   icon: '🔬', color: 'from-cyan-500 to-cyan-700' },
-  deepfuse:          { name: 'DeepFuse (AI + SR)', icon: '🚀', color: 'from-indigo-500 to-indigo-700' },
 }
 
 export default function ComparePage() {
-  const [images,   setImages]  = useState([])
-  const [loading,  setLoading] = useState(false)
-  const [results,  setResults] = useState(null)
-  const [error,    setError]   = useState(null)
+  const [images, setImages] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [results, setResults] = useState(null)
+  const [error, setError] = useState(null)
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef()
 
@@ -37,7 +39,7 @@ export default function ComparePage() {
     try {
       const fd = new FormData()
       images.forEach((img, i) => fd.append(`image${i}`, img.file))
-      const res  = await fetch('/api/compare', { method: 'POST', body: fd })
+      const res = await fetch('/api/compare', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Compare failed')
       setResults(data.results)
@@ -50,8 +52,8 @@ export default function ComparePage() {
 
   const best = results
     ? Object.entries(results).reduce((a, [k, v]) =>
-        v.metrics.ssim_avg > (results[a]?.metrics.ssim_avg ?? -Infinity) ? k : a,
-        Object.keys(results)[0])
+      v.metrics.ssim_avg > (results[a]?.metrics.ssim_avg ?? -Infinity) ? k : a,
+      Object.keys(results)[0])
     : null
 
   return (
@@ -288,7 +290,7 @@ export default function ComparePage() {
                         {METHOD_LABELS[id]?.icon} {METHOD_LABELS[id]?.name}
                       </td>
                       {images.flatMap((_, i) => [
-                         <td key={`ssim-val-${i}`} className="py-3 px-4 text-center font-mono border-l border-white/10">
+                        <td key={`ssim-val-${i}`} className="py-3 px-4 text-center font-mono border-l border-white/10">
                           {r.metrics.ssim_per_source?.[i] != null ? r.metrics.ssim_per_source[i].toFixed(4) : '—'}
                         </td>,
                         <td key={`mi-val-${i}`} className="py-3 px-4 text-center font-mono">
